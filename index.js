@@ -1,16 +1,20 @@
-const chalk       = require('chalk');
-const clear       = require('clear');
-const CLI         = require('clui');
-const figlet      = require('figlet');
-const inquirer    = require('inquirer');
+const chalk = require('chalk');
+const clear = require('clear');
+const CLI = require('clui');
+const figlet = require('figlet');
+const inquirer = require('inquirer');
 const Preferences = require('preferences');
-const Spinner     = CLI.Spinner;
-const GitHubApi   = require('github');
-const _           = require('lodash');
-const git         = require('simple-git')();
-const touch       = require('touch');
-const fs          = require('fs');
-const files       = require('./lib/files');
+const Spinner = CLI.Spinner;
+const GitHubApi = require('github');
+const _ = require('lodash');
+const git = require('simple-git')();
+const touch = require('touch');
+const fs = require('fs');
+const files = require('./lib/files');
+const prefs = new Preferences('createjsapp');
+const github = new GitHubApi({
+  version: '3.0.0'
+});
 
 clear();
 console.log(
@@ -20,8 +24,8 @@ console.log(
 );
 
 //if (files.directoryExists('.git')) {
-  //console.log(chalk.red('This project is already setup'));
-  //process.exit();
+//console.log(chalk.red('This project is already setup'));
+//process.exit();
 //}
 
 function getGithubCredentials(callback) {
