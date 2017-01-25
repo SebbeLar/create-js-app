@@ -11,7 +11,6 @@ const git = require('simple-git')();
 const touch = require('touch');
 const fs = require('fs');
 const files = require('./lib/files');
-const prefs = new Preferences('createjsapp');
 const github = new GitHubApi({
   version: '3.0.0'
 });
@@ -59,6 +58,97 @@ function getGithubCredentials(callback) {
   inquirer.prompt(questions).then(callback);
 }
 
-getGithubCredentials(function() {
-  console.log(arguments);
-});
+
+function getGithubToken(callback) {
+  const prefs = new Preferences('createjsapp');
+
+  if(prefs.github && prefs.github.token) {
+    return callback(null, prefs.github.token);
+  }
+
+  getGithubCredentials(function(credentials) {
+    const status = new Spinner('Authenticating you, please wait...');
+    status.start();
+
+    github.authenticate(
+      _.extend(
+        {
+          type: 'basic'
+        },
+        credentials
+      )
+    );
+
+    github.authorization.create({
+      scopes: ['user', 'public_repo', 'repo', 'repo:status'],
+      note: 'create-js-app, CLI for fast scafolding'
+    }, function(err, res) {
+      status.stop();
+      if(err) {
+        return callback(err);
+      }
+      if(res.token) {
+        prefs.github = {
+          token: res.token
+        };
+        return callback(null, res.token);
+      }
+      return callback();
+    });
+  });
+}
+
+function createRepo(callback) {
+  const argv = require('minimist')(process.argv.slice(2));
+
+  const questions = [
+    {
+      type: 'input',
+      name: 'name',
+      message: 'Enter a name for the repository:',
+      default: argv._[0] || files.getCurrentDirectoryBase(),
+      validate: function(value) {
+        if(value.length) {
+          return true;
+        } else {
+          return 'Please enter a name for the repository';
+        }
+      }
+    },
+    {
+      type: 'input',
+      name: 'description',
+      default: argv._[1] || null,
+      message: 'Enter a description of the repository:'
+    },
+    {
+      type: 'list',
+      name: 'visability',
+      message: 'Public pr private:',
+      choices: ['public', 'private'],
+      default: 'public'
+    }
+  ];
+
+  inquirer.prompt(questions).then(function(answers) {
+    const status = new Spinner('Creating repository...');
+    status.start();
+
+    const data = {
+      name: answers.name,
+      description: answers.description,
+      private: (answers.visability === 'private')
+    };
+
+    github.repos.create(
+      data,
+      function(err, res) {
+        status.stop();
+        if(err) {
+          return callback(err);
+        }
+        return callback(null, res.ssh_url);
+      }
+    );
+  });
+}
